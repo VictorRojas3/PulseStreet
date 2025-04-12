@@ -1,11 +1,7 @@
-# main.py
 import asyncio
 import httpx
 import time
 import logging
-
-# Import config and validate it first
-# This implicitly sets up logging format/level based on config.py
 import config
 if not config.IS_CONFIG_VALID:
     # Logger might not be fully configured if basic config failed,

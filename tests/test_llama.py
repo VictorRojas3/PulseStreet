@@ -1,4 +1,3 @@
-# test_llama_hf.py
 import asyncio
 import httpx
 import logging
@@ -6,16 +5,16 @@ import time
 import os
 
 try:
-    # Import the relevant config vars for Serverless API
     from config import (
         HF_API_TOKEN,
         HF_MODEL_ID,
-        HF_SERVERLESS_API_URL, # Use this constructed URL
+        HF_SERVERLESS_API_URL, 
         logger,
         LOG_LEVEL,
         IS_CONFIG_VALID,
-        LLAMA_TIMEOUT_SECONDS # Use the (longer) timeout from config
+        LLAMA_TIMEOUT_SECONDS 
     )
+
 except ImportError as e:
     logging.basicConfig(level=logging.INFO)
     logging.error(f"Failed to import config. Ensure config.py exists and loads .env. Error: {e}")
@@ -41,7 +40,7 @@ async def run_hf_llama_test():
 
     test_prompt = "Explain the concept of blockchain in one sentence."
     params = { "max_new_tokens": 50, "temperature": 0.7, "do_sample": True, "return_full_text": False }
-    payload = { "inputs": test_prompt, "parameters": params, "options": {"wait_for_model": True} } # Add wait_for_model
+    payload = { "inputs": test_prompt, "parameters": params, "options": {"wait_for_model": True} } 
     headers = { "Authorization": f"Bearer {HF_API_TOKEN}", "Content-Type": "application/json" }
 
     logger.info(f"Sending test prompt to Serverless API: {target_url}")
@@ -52,7 +51,6 @@ async def run_hf_llama_test():
     success = False
 
     try:
-        # Use the potentially long timeout from config
         async with httpx.AsyncClient(timeout=LLAMA_TIMEOUT_SECONDS) as client:
             start_time = time.monotonic()
             response = await client.post(target_url, headers=headers, json=payload)
@@ -63,21 +61,18 @@ async def run_hf_llama_test():
             # Handle potential 503 during model loading
             if response.status_code == 503:
                 logger.warning(f"Received HTTP 503 after {inference_time:.2f}s: Model might be loading (cold start).")
-                # Estimate remaining time based on 'estimated_time' if present
                 try:
                     error_data = response.json()
                     est_time = error_data.get("estimated_time")
                     if est_time:
                         logger.warning(f"  Estimated loading time remaining: {est_time:.1f} seconds. Re-running the test might work.")
                 except Exception:
-                    pass # Ignore errors parsing the error response
+                    pass 
                 generated_text = "Error: HTTP 503 (Model Loading)"
-            # Handle other errors (like 429 Too Many Requests)
             elif response.status_code >= 400:
                  logger.error(f"HTTP Error {response.status_code}: {response.text}")
                  generated_text = f"Error: HTTP {response.status_code}"
-                 response.raise_for_status() # Let httpx handle standard error raising for logging below
-            # Handle success
+                 response.raise_for_status()
             else:
                 response_data = response.json()
                 if isinstance(response_data, list) and len(response_data) > 0:
@@ -91,9 +86,7 @@ async def run_hf_llama_test():
                 success = not generated_text.startswith("Error:")
 
     except httpx.HTTPStatusError as e:
-         # This catches the raise_for_status() for non-503 errors >= 400
          logger.error(f"Request failed: {e.response.status_code} - Check logs above.", exc_info=False)
-         # generated_text is already set to error string in the block above
     except httpx.TimeoutException:
         logger.error(f"Request timed out after {LLAMA_TIMEOUT_SECONDS} seconds (Severe cold start or network issue).")
         generated_text = "Error: Timeout"
