@@ -1,4 +1,3 @@
-# test_twitter.py
 import asyncio
 import httpx
 import logging
